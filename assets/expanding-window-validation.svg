@@ -1,0 +1,49 @@
+<svg xmlns="http://www.w3.org/2000/svg" width="920" height="190" viewBox="0 0 920 190" role="img" aria-labelledby="title desc">
+  <title id="title">Temporal cross-validation with expanding window</title>
+  <desc id="desc">Three temporal validation folds with expanding training windows, fixed validation windows and a final holdout segment kept locked at the end of the timeline.</desc>
+  <defs>
+    <style>
+      .bg { fill: #ffffff; }
+      .panel { fill: #ffffff; stroke: #d0d7de; stroke-width: 1; }
+      .label { fill: #24292f; font: 600 14px Arial, sans-serif; }
+      .small { fill: #57606a; font: 12px Arial, sans-serif; }
+      .train { fill: #8ec5ff; }
+      .val { fill: #ffe66d; }
+      .holdout { fill: #c4b5fd; }
+      .future { fill: #f6f8fa; }
+      .tick { stroke: #8c959f; stroke-width: 1; }
+    </style>
+  </defs>
+
+  <rect class="bg" width="920" height="190" rx="8"/>
+  <rect class="panel" x="16" y="14" width="888" height="162" rx="8"/>
+
+  <text class="label" x="34" y="43">Temporal cross-validation - expanding window</text>
+
+  <rect class="train" x="660" y="31" width="12" height="12" rx="2"/>
+  <text class="small" x="678" y="42">train</text>
+  <rect class="val" x="728" y="31" width="12" height="12" rx="2"/>
+  <text class="small" x="746" y="42">validation</text>
+  <rect class="holdout" x="834" y="31" width="12" height="12" rx="2"/>
+  <text class="small" x="852" y="42">holdout</text>
+
+  <text class="label" x="34" y="81">Fold 1</text>
+  <rect class="train" x="130" y="65" width="360" height="20" rx="4"/>
+  <rect class="val" x="490" y="65" width="70" height="20" rx="4"/>
+  <rect class="future" x="560" y="65" width="180" height="20" rx="4"/>
+  <rect class="holdout" x="740" y="65" width="70" height="20" rx="4"/>
+
+  <text class="label" x="34" y="115">Fold 2</text>
+  <rect class="train" x="130" y="99" width="450" height="20" rx="4"/>
+  <rect class="val" x="580" y="99" width="70" height="20" rx="4"/>
+  <rect class="future" x="650" y="99" width="90" height="20" rx="4"/>
+  <rect class="holdout" x="740" y="99" width="70" height="20" rx="4"/>
+
+  <text class="label" x="34" y="149">Fold 3</text>
+  <rect class="train" x="130" y="133" width="540" height="20" rx="4"/>
+  <rect class="val" x="670" y="133" width="70" height="20" rx="4"/>
+  <rect class="holdout" x="740" y="133" width="70" height="20" rx="4"/>
+
+  <line class="tick" x1="740" y1="56" x2="740" y2="156"/>
+  <text class="small" x="710" y="169">locked final holdout</text>
+</svg>
