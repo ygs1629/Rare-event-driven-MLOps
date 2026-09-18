@@ -12,7 +12,7 @@ The documentation explores the high-level decisions made for the system architec
 
 ## Project context
 
-Real-world rare-event prediction problems can combine several challenging characteristics, such as **repeated observations of the same entities over time, highly imbalanced targets with scarce positive events, limited historical data, potentially sensitive attributes, temporal leakage risks, and heterogeneous data sources** .
+Real-world rare-event prediction problems can combine several challenging characteristics, such as **repeated observations of the same entities over time, highly imbalanced targets with scarce positive events, limited historical data, potentially sensitive attributes, temporal leakage risks, and heterogeneous data sources**.
 
 These characteristics can significantly influence both the modelling strategy and the production architecture.
 
@@ -149,7 +149,7 @@ flowchart LR
 
 When source data is updated periodically and the resulting scores are intended for an analytical workflow rather than millisecond-level decisions then it can be assumed that an online prediction endpoint is not required in these circumstances.
 
-A separate Vertex AI pipeline could could reuse the promoted preprocessing and model artifacts, load the required historical context, generate period-level probabilities, and calculate the main SHAP drivers for prioritised cases.
+A separate Vertex AI pipeline could reuse the promoted preprocessing and model artifacts, load the required historical context, generate period-level probabilities, and calculate the main SHAP drivers for prioritised cases.
 
 The outputs were written to curated prediction tables for downstream business consumption.
 
