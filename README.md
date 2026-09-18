@@ -1,50 +1,28 @@
-# People Analytics MLOps
+# Rare event-driven MLOps
 
-> Confidentiality-safe technical case study based on a collaborative Master's Thesis project
+> High-level technical case study for production-oriented ML for periodically updated data
 
 ![ML](<https://img.shields.io/badge/Machine%20Learning-Rare%20Events-blue>) ![MLOps](<https://img.shields.io/badge/MLOps-Vertex%20AI-green>) ![Explainability](https://img.shields.io/badge/Explainability-SHAP-orange) ![Fairness](<https://img.shields.io/badge/Governance-Fairness%20Checks-purple>) ![Confidential](https://img.shields.io/badge/Data-Confidential-lightgrey)
 
-Technical case study based on a collaborative Master's Thesis project focused on employee attrition prediction using tabular, temporal and unstructured data on Google Cloud Platform.
+Technical case study focused on rare event prediction using tabular, temporal, and unstructured data on GCP. Some parts are highly replicable in sectors such as industrial predictive maintenance, customer lifetime value, and healthcare.
 
-The objective was to transform periodically updated HR and operational data into an interpretable batch risk signal. The resulting predictions were conceived as decision-support information for HR, not as automated decisions about employees.
+The scenario's objective was to transform periodically updated data into an interpretable batch risk signal. The resulting predictions were conceived as decision-support information for management teams, not as automated black-box decisions.
 
-## Project Context
+The documentation explores the high-level decisions made for the system architecture, an EDA and experimental approach, the steps of an automated training pipeline, the integration of the inference pipeline, the inclusion of unstructured data, and the possible positive outcomes of similar solutions.
 
-The use case presented several technical constraints: longitudinal employee-month observations, severe class imbalance with very few positive events, limited temporal coverage, sensitive attributes, leakage risk and mixed data types.
+## Project context
 
-These constraints shaped both the modelling strategy and the MLOps architecture.
+Real-world rare-event prediction problems can combine several challenging characteristics, such as **repeated observations of the same entities over time, highly imbalanced targets with scarce positive events, limited historical data, potentially sensitive attributes, temporal leakage risks, and heterogeneous data sources** .
 
-## My Contribution and Main Decisions
+These characteristics can significantly influence both the modelling strategy and the production architecture.
 
-**Ownership**
+## Minimum system architecture
 
-| Area                                | Role                      |
-| ----------------------------------- | ------------------------- |
-| EDA and feature experimentation     | Owner                     |
-| Model validation and selection      | Owner                     |
-| Vertex AI training pipeline         | Owner                     |
-| Explainability and fairness         | Owner                     |
-| NLP exploration                     | Co-owner                  |
-| Batch inference                     | Contributor               |
-| Data ingestion and medallion layers | Context / downstream user |
-
-**Selected decisions**
-
-| Decision                                     | Rationale                                                     |
-| -------------------------------------------- | ------------------------------------------------------------- |
-| Temporal and permutation-based validation    | Reduced leakage and spurious-signal risk                      |
-| Stability-aware model gating                 | Avoided fragile promotions                                    |
-| SHAP and fairness checks before registration | Made model behaviour reviewable before downstream consumption |
-| Batch inference over online serving          | Matched the business cadence and reduced serving complexity   |
-| NLP kept exploratory                         | Evidence did not justify operational complexity               |
-
-## System Architecture
-
-The complete solution followed a layered batch architecture on Google Cloud:
+A recommended end-to-end solution would be a layered batch architecture on Google Cloud:
 
 ```mermaid
 flowchart LR
-  A[HR Sources] --> B[Serverless Ingestion]
+  A[Original Sources] --> B[Serverless Ingestion]
   B --> C[Layered Data Warehouse<br/>Raw / Curated / ML-ready]
   C --> D[Training Pipeline]
   C --> E[Batch Inference]
@@ -52,37 +30,37 @@ flowchart LR
   E --> G[Prediction consumption]
 ```
 
-The data platform used a medallion architecture. This work was implemented by other members of the team, but it provided the curated data foundation used by the ML workflows.
+The data platform could use a medallion architecture, which can provide a curated data foundation used by other ML workflows.
 
-The training and inference processes were separated because they had different responsibilities. Training evaluated new candidates and controlled promotion, while inference loaded an approved model and generated recurring predictions without retraining it.
+The training and inference processes should be separated as they have different responsibilities. Given that, in this case, latency is not a requirement, the training pipeline can take advantage of this by evaluating new candidates and controlling promotion offline. The inference pipeline then has to load the saved promoted artifacts (to avoid training-serving skew) in order to make recurring predictions.
 
-## Analytical Strategy - Top-down EDA
+## Analytical strategy - Top-down EDA
 
 ```mermaid
 flowchart LR
   A[Data validation]
-  A --> B[Macro EDA<br/>Company-level monthly 
+  A --> B[Macro EDA<br/>Global-level monthly 
 patterns]
-  A --> C[Micro EDA<br/>Employee-month behaviour]
+  A --> C[Micro EDA<br/>Individual-month behaviour]
   B --> D[Non-parametric tests 
 +
 permutation tests]
   C --> D
 ```
 
-This progression was designed to quantify the incremental value of each analytical layer, avoiding both unnecessary complexity and overestimation of weak signals.
+This progression is designed to quantify the incremental value of each analytical layer, avoiding both unnecessary complexity and overestimation of weak signals.
 
-Because the aggregate time series was short and the positive class was extremely small, the analysis relied on conservative methods such as non-parametric tests, multicollinearity checks and permutation-based filtering. These techniques reduced the risk of selecting relationships that appeared meaningful only by chance.
+If the time series is short and the positive class is extremely small, the risk of selecting random relationships by chance increases considerably. Therefore, relying on conservative methods (if time and computation allow it) could involve a mix of non-parametric tests, multicollinearity checks, and permutation-based filtering as methods to reduce the risk of spurious correlations.
 
-## Feature Engineering and Experiment Configuration
+## Feature engineering and experiment configuration
 
 **Feature engineering**
 
-This stage translated the EDA findings into controlled modelling experiments. Raw contemporaneous variables formed the baseline, while each additional feature family was treated as a challenger and evaluated under the same A/B testing framework.
+Following the EDA, the next steps would be to translate the findings into controlled modelling experiments. Raw contemporaneous variables should form the baseline, while each additional feature family would be treated as a challenger and evaluated under the same A/B testing framework, hence continuing with the top-down philosophy.
 
 ```mermaid
 flowchart LR
-  A[Raw contemporaneous features] --> B[Baseline]
+  A[Raw contemporaneous feats] --> B[Baseline]
   C[Macro-level features] --> G[Challengers]
   D[Micro-temporal features] --> G
   E[Interaction features] --> G
@@ -93,15 +71,13 @@ flowchart LR
 
 **Preprocessing**
 
-Numerical variables were imputed and robustly scaled, while categorical and ordinal variables used dedicated encoders within the same reusable preprocessing pipeline. Given the limited number of positive cases, the approach prioritised simple transformations that preserved observations rather than aggressive filtering or synthetic resampling.
+Given the limited number of positive cases, the priority should be simple transformations to preserve the original observations rather than aggressive filtering or synthetic resampling.
 
 **Experimental design**
 
-The same temporal windows, candidate algorithms, evaluation metrics and promotion rules were maintained across feature versions. This ensured that performance differences could be attributed primarily to the feature representation rather than to changes in validation or model configuration.
+The same temporal windows, candidate algorithms, evaluation metrics, and promotion rules have to be maintained across feature versions to ensure rigorous validation of performance rather than validation of changes in configuration.
 
-<p align="center">
-  <img src="assets/expanding-window-validation.svg" alt="Temporal cross-validation with expanding window" width="820">
-</p>
+> A possible expanding window design, enabling the quantification of the global stability of the model per experiment.
 
 **Candidate algorithms**
 
@@ -112,21 +88,21 @@ The same temporal windows, candidate algorithms, evaluation metrics and promotio
   <img src="https://img.shields.io/badge/XGBoost-Candidate-EA580C" />
 </p>
 
-All candidates used imbalance-aware configurations based on class weighting or an equivalent algorithm-specific mechanism.
+Given the restrictions of the problem, efforts should not be primarily allocated to creating a sophisticated algorithm. The first main concern should be improving the representation of the data (*garbage in, garbage out*). What should be common across models is the use of class weighting or an equivalent algorithm-specific mechanism.
 
-**Evaluation and promotion logic**
+**Some evaluation metrics and the conceptual promotion logic**
 
-|                  Perspective                  |                        Criteria                        |                                  Selection role                                  |
-| :--------------------------------------------: | :----------------------------------------------------: | :-------------------------------------------------------------------------------: |
-| Predictive quality<br />under severe imbalance | PR-AUC, top-risk recall,<br />top-risk precision, lift |       Measured rare-event performance and usefulness for prioritised review       |
-|              Temporal robustness              |            Mean/std across expanding folds            |              Penalised candidates with unstable validation behaviour              |
-|             Production suitability             |        Interpretability, operational complexity        | Favoured simpler models unless complexity delivered<br />stable incremental value |
+|                  Perspective                  |                     Criteria                     |                                  Selection role                                  |
+| :--------------------------------------------: | :----------------------------------------------: | :-------------------------------------------------------------------------------: |
+| Predictive quality<br />under severe imbalance | PR-AUC, top-risk recall,<br />top-risk precision |       Measured rare-event performance and usefulness for prioritised review       |
+|              Temporal robustness              |         Mean/std across expanding folds         |              Penalised candidates with unstable validation behaviour              |
+|             Production suitability             |     Interpretability, operational complexity     | Favoured simpler models unless complexity delivered<br />stable incremental value |
 
-The resulting weighted score centralised these criteria into a reproducible gating decision. A candidate could progress only when it exceeded the current reference model under the same temporal validation setup and satisfied the minimum promotion thresholds.
+A weighted score is a simple way to centralise the criteria into a reproducible gating decision, resulting in the progression of a candidate only when it exceeds the current reference model under the same temporal validation setup and satisfies the minimum promotion thresholds.
 
-## Vertex AI Training Pipeline
+## Vertex AI training pipeline
 
-The offline training lifecycle was implemented as a component-based Kubeflow Pipeline executed through Vertex AI Pipelines.
+In GCP, the offline training lifecycle can be implemented as a component-based Kubeflow Pipeline executed through Vertex AI Pipelines. This offers many advantages, such as serverless execution, lower development overhead, reusable components, DAG workflows, and portability.
 
 ```mermaid
 flowchart LR
@@ -146,46 +122,42 @@ Data]
   G --> H[Register]
 ```
 
-Only promoted candidates reached the final evaluation stage. Before registration, the pipeline generated explainability and fairness artifacts so that model approval was tied not only to predictive performance, but also to reviewability in a sensitive HR context.
+Continuing with the hard-filtering methodology, only promoted candidates should reach the final evaluation stage. Before registration, the pipeline has to generate explainability and fairness artifacts so that model approval is tied not only to predictive performance, but also to reviewability in a sensitive context.
 
-The promoted model and preprocessing artifacts became the contract consumed by the batch inference pipeline, reducing the risk of training-serving inconsistencies.
+## Unstructured data
 
-## NLP
+In some cases, it is possible that the source can provide unstructured data to complement the tabular data. While this is a fantastic opportunity to experiment and extract more valuable signal in such a reduced-positive-class scenario, it would be best to have a strong, robust tabular training pipeline first, and then expand into this type of data.
 
-NLP was explored as a complementary signal for the tabular attrition model. The goal was to transform internal text into employee-month aggregates such as dominant sentiment, average intensity and negative-message share.
+If the unstructured data is text, a common workflow with LLM-assisted labelling (favouring speed) could be as shown below. It indicates the use of these features (from experimentation to training consumption), and the badges show the alternatives that could be tried in the GCP environment.
 
 ```mermaid
 flowchart LR
-  A[Internal text] --> B[Cleaning and deduplication]
-  B --> C[LLM-assisted labels]
+  A[Unstructured signals] --> B[Cleaning and deduplication]
+  B --> C[Assisted labelling]
   C --> D[Model comparison]
-  D --> E[Employee-month aggregates]
+  D --> E[Aggregated features]
   E --> F[Tabular challenger features]
 ```
 
 <p>
-  <img src="https://img.shields.io/badge/LLM%20Teacher-Reference%20Labels-7C3AED" />
-  <img src="https://img.shields.io/badge/Gemini%20Flash-Best%20Candidate-4285F4?logo=googlegemini&logoColor=white" />
-  <img src="https://img.shields.io/badge/Cloud%20Natural%20Language-Compared-34A853?logo=googlecloud&logoColor=white" />
-  <img src="https://img.shields.io/badge/LSTM%2FGRU-Explored-4B5563" />
+  <img src="https://img.shields.io/badge/Assisted%20Labelling-Reference%20Signals-7C3AED" />
+  <img src="https://img.shields.io/badge/Managed%20NLP-Compared-4285F4" />
+  <img src="https://img.shields.io/badge/Custom%20Sequence%20Model-Compared-4B5563" />
 </p>
 
-The NLP signal showed potential as an auxiliary feature family, but the evidence depended on very few positive events, limited semantic variance and on labels derived from another model rather than from a sufficiently large human-labelled ground truth. It was therefore documented as a future line of work instead of being promoted into the production ML workflow.
+## Batch inference integration
 
-## Batch Inference Integration
+When source data is updated periodically and the resulting scores are intended for an analytical workflow rather than millisecond-level decisions then it can be assumed that an online prediction endpoint is not required in these circumstances.
 
-The use case did not require an online prediction endpoint. Source data was updated periodically, and the resulting scores were intended for an analytical business workflow rather than millisecond-level decisions.
-
-A separate Vertex AI pipeline reused the promoted preprocessing and model artifacts, loaded the required historical context, generated employee-level probabilities and calculated the main SHAP drivers for prioritised cases.
+A separate Vertex AI pipeline could could reuse the promoted preprocessing and model artifacts, load the required historical context, generate period-level probabilities, and calculate the main SHAP drivers for prioritised cases.
 
 The outputs were written to curated prediction tables for downstream business consumption.
 
-## Representative Stack
+## Representative stack
 
 <p>
   <img src="https://img.shields.io/badge/Python-3.12-3776AB?logo=python&logoColor=white" />
   <img src="https://img.shields.io/badge/scikit--learn-ML-F7931E?logo=scikitlearn&logoColor=white" />
-  <img src="https://img.shields.io/badge/XGBoost-Gradient%20Boosting-FF6600" />
   <img src="https://img.shields.io/badge/SHAP-Explainability-00AEEF" />
   <img src="https://img.shields.io/badge/Vertex%20AI-Pipelines-34A853?logo=googlecloud&logoColor=white" />
   <img src="https://img.shields.io/badge/Kubeflow-KFP%20v2-326CE5?logo=kubernetes&logoColor=white" />
@@ -195,24 +167,25 @@ The outputs were written to curated prediction tables for downstream business co
   <img src="https://img.shields.io/badge/MLflow-Experiment%20Tracking-0194E2?logo=mlflow&logoColor=white" />
 </p>
 
-## Future Work
+## Potential future improvements
 
-| Priority                      | Direction                              | Objective                                                                                           |
-| ----------------------------- | -------------------------------------- | --------------------------------------------------------------------------------------------------- |
-| ![P0](assets/priority-p0.svg) | Monitoring and drift detection         | Extend observability across input data, predictions, concepts and explanation patterns              |
-| ![P0](assets/priority-p0.svg) | Local fairness and explainability gate | Add local SHAP and fairness tests on prioritised high-risk cases                                    |
-| ![P1](assets/priority-p1.svg) | Automated retraining lifecycle         | Define when and how new candidates should be trained, evaluated and promoted                        |
-| ![P1](assets/priority-p1.svg) | Artifact and serving governance        | Strengthen model, preprocessing and inference versioning through registry-based deployment patterns |
-| ![P2](assets/priority-p2.svg) | NLP productionisation path             | Turn text-derived signals into a governed enrichment pipeline if future validation supports it      |
+| Priority                                                                                                                                    | Direction                       | Objective                                                                                                                               |
+| ------------------------------------------------------------------------------------------------------------------------------------------- | ------------------------------- | --------------------------------------------------------------------------------------------------------------------------------------- |
+| ![P0](assets/priority-p0.svg)                                                                                                               | Monitoring and drift detection  | Extend observability across data, predictions, concepts and explanation patterns                                                        |
+| ![P0](assets/priority-p0.svg)                                                                                                               | Deeper fairness evaluation      | Strengthen fairness analysis across both global behaviour and prioritised local cases                                                   |
+| ![P1](assets/priority-p1.svg)                                                                                                               | Automated retraining lifecycle  | Define when and how new candidates should be trained, evaluated and promoted                                                            |
+| ![P1](assets/priority-p1.svg)                                                                                                               | Stronger artifact governance    | Improve versioning and traceability for models, preprocessing assets, and inference components                                          |
+| ![P2](assets/priority-p2.svg)                                                                                                               | Governed NLP productionisation  | Turn text-derived signals into a controlled enrichment pipeline if future validation supports it                                        |
+| ![P2](/assets/priority-p2.svg) | Experiment with survival models | Although computationally more expensive, less feature processing is needed and a continuous probability curve is native to these models |
 
-## Outcomes
+## Expected possible outcomes
 
-- **Business framing:** Moved the problem from periodic, subjective assessment towards recurring, quantitative and auditable risk signals.
-- **Modelling evidence:** Promising results, interpreted cautiously because of limited temporal history and severe class imbalance.
-- **Responsible ML:** Explainability, fairness review and data governance were treated as design requirements rather than post-training add-ons.
-- **MLOps maturity:** Established reproducible training and batch inference foundations; continuous training and post-deployment monitoring remained future work.
-- **Product judgement:** Kept NLP as a potential enrichment path because its operational burden was not yet supported by sufficiently robust evidence.
+* **Business framing:** Moving the problem from periodic, subjective assessment towards recurring, quantitative, and auditable risk signals.
+* **Modelling evidence:** Cautious interpretation because of limited temporal history and severe class imbalance.
+* **Responsible ML:** Explainability, fairness review, and data governance have to be treated as design requirements rather than post-training add-ons.
+* **MLOps maturity:** Establishing reproducible training and batch inference foundations is the bare minimum; continuous training and post-deployment monitoring should be priorities for a second work-phase sprint.
+* **Product judgement:** Adding other sources could provide a potential signal-enrichment path, but their operational burden also has to be justified.
 
 ---
 
-*This repository is a documentation-only technical case study. The original project was developed under a confidentiality agreement and no original data, source code, notebooks, schemas, infrastructure identifiers, model artifacts, employee-level information or exact confidential results are included.*
+*This repository is a documentation-only technical case study. This blueprint is a technical abstraction derived from academic and collaborative work in the MLOps academic and professional fields. To comply with confidentiality obligations, all specific corporate contexts, data, specific architectures and results have been completely omitted. This repository serves solely to demonstrate generalizable technical patterns.*
